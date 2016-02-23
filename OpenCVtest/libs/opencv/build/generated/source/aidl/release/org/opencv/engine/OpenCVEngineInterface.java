@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Original file: /Users/katoTakashi/Documents/00git/study/openCVtest/OpenCVtest/libs/opencv/src/org/opencv/engine/OpenCVEngineInterface.aidl
+ * Original file: /Users/katotakashi/Documents/git/study/openCVtest/OpenCVtest/libs/opencv/src/org/opencv/engine/OpenCVEngineInterface.aidl
  */
 package org.opencv.engine;
 /**
