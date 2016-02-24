@@ -17,16 +17,20 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.opencv.objdetect.Objdetect;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
     static{
@@ -40,6 +44,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private CameraBridgeViewBase mCameraView;
     private static Context mContext;
     private static CascadeClassifier mFaceDetector;
+    private static CascadeClassifier mEyeDetector;
     private Size mMinFaceSize;
 
     @Override
@@ -121,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Scalar RECT_COLOR;
-        RECT_COLOR = new Scalar(0, 0, 255);
+        RECT_COLOR = new Scalar(0, 255, 255);
 
         Mat rgba = inputFrame.rgba();
         if (mFaceDetector != null) {
@@ -131,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             Rect[] facesArray = faces.toArray();
             for (int i = 0; i < facesArray.length; i++) {
                 Imgproc.rectangle(rgba, facesArray[i].tl(), facesArray[i].br(), RECT_COLOR, 3);
+//                fncDetectEye(mEyeDetector, rgba, inputFrame.gray(),facesArray[i], faces);
             }
         }
         return rgba;
@@ -152,6 +158,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 case LoaderCallbackInterface.SUCCESS:
                     mCameraView.enableView();
                     mFaceDetector = setupFaceDetector();
+                    mEyeDetector = setupEyeDetector();
                     break;
                 default:
                     break;
@@ -208,5 +215,77 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             return null;
         }
         return detector;
+    }
+
+    //////////////
+    private static File setupCascadeFileEye() {
+        File cascadeDir = mContext.getDir("cascade", Context.MODE_PRIVATE);
+        File cascadeFile = null;
+        InputStream is = null;
+        FileOutputStream os = null;
+        try {
+            cascadeFile = new File(cascadeDir, "haarcascade_eye.xml");
+            if (!cascadeFile.exists()) {
+                is = mContext.getResources().openRawResource(R.raw.lbpcascade_frontalface);
+                os = new FileOutputStream(cascadeFile);
+                byte[] buffer = new byte[4096];
+                int readLen = 0;
+                while ((readLen = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, readLen);
+                }
+            }
+        } catch (IOException e) {
+            return null;
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (Exception e) {
+                    // do nothing
+                }
+            }
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (Exception e) {
+                    // do nothing
+                }
+            }
+        }
+        return cascadeFile;
+    }
+
+
+    private static CascadeClassifier setupEyeDetector() {
+        File cascadeFile = setupCascadeFileEye();
+        if (cascadeFile == null) {
+            return null;
+        }
+
+        CascadeClassifier detector = new CascadeClassifier(cascadeFile.getAbsolutePath());
+        if (detector.empty()) {
+            return null;
+        }
+        return detector;
+    }
+
+    //目を描画
+    private void fncDetectEye(CascadeClassifier cascade_eye, Mat mat, Mat gray, Rect Rct, MatOfRect matOfRect){
+//        String cascade_eye_path=Environment.getExternalStorageDirectory()
+//                +"/DCIM/100ANDRO/haarcascade_eye.xml";
+//検索用submat切り出し
+        Mat sub = new Mat();
+        gray.submat(Rct.y, Rct.y + Rct.height, Rct.x, Rct.x + Rct.width).copyTo(sub);
+//検索結果格納領域
+        List geteyelist = new ArrayList();
+//検索処理
+        cascade_eye.detectMultiScale(sub, matOfRect, 1.1, 3, Objdetect.CASCADE_SCALE_IMAGE, mMinFaceSize, mMinFaceSize);
+//検索結果表示処理
+        for (int i=0; i < geteyelist.size(); i++){
+            Rect rct = (Rect) geteyelist.get(i);
+            Point center = new Point(Rct.x + rct.x + rct.width / 2 ,Rct.y + rct.y + rct.height / 2);
+            int radius = rct.width / 2;
+//            Core.circle(mat, center, radius, new Scalar(0, 255, 255), 2);
+        }
     }
 }
