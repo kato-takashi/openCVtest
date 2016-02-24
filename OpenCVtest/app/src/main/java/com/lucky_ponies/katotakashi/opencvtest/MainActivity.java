@@ -16,10 +16,17 @@ import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfRect;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
     static{
@@ -31,6 +38,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     private CameraBridgeViewBase mCameraView;
+    private static Context mContext;
+    private static CascadeClassifier mFaceDetector;
+    private Size mMinFaceSize;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +108,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStarted(int width, int height) {
-
+        if (mMinFaceSize == null) {
+            mMinFaceSize = new Size(height / 5, height / 5);
+        }
     }
 
     @Override
@@ -110,11 +122,16 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Scalar RECT_COLOR;
         RECT_COLOR = new Scalar(0, 0, 255);
+
         Mat rgba = inputFrame.rgba();
-        MatOfPoint maxArea = SkinDetector.getInstance().getMaxSkinArea(rgba);
-        if (maxArea != null) {
-            Rect rectOfArea = Imgproc.boundingRect(maxArea);
-            Imgproc.rectangle(rgba, rectOfArea.tl(), rectOfArea.br(), RECT_COLOR, 3);
+        if (mFaceDetector != null) {
+            MatOfRect faces = new MatOfRect();
+            mFaceDetector.detectMultiScale(inputFrame.gray(), faces, 1.1, 2, 2, mMinFaceSize,
+                    new Size());
+            Rect[] facesArray = faces.toArray();
+            for (int i = 0; i < facesArray.length; i++) {
+                Imgproc.rectangle(rgba, facesArray[i].tl(), facesArray[i].br(), RECT_COLOR, 3);
+            }
         }
         return rgba;
     }
@@ -124,6 +141,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         private OpenCVLoaderCallback(Context context, CameraBridgeViewBase cameraView) {
             super(context);
             mCameraView = cameraView;
+            mContext = context;
+
+
         }
 
         @Override
@@ -131,11 +151,62 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                     mCameraView.enableView();
+                    mFaceDetector = setupFaceDetector();
                     break;
                 default:
-                    super.onManagerConnected(status);
                     break;
             }
         }
+    }
+
+    //カスケードファイルの作成
+    private static File setupCascadeFile() {
+        File cascadeDir = mContext.getDir("cascade", Context.MODE_PRIVATE);
+        File cascadeFile = null;
+        InputStream is = null;
+        FileOutputStream os = null;
+        try {
+            cascadeFile = new File(cascadeDir, "lbpcascade_frontalface.xml");
+            if (!cascadeFile.exists()) {
+                is = mContext.getResources().openRawResource(R.raw.lbpcascade_frontalface);
+                os = new FileOutputStream(cascadeFile);
+                byte[] buffer = new byte[4096];
+                int readLen = 0;
+                while ((readLen = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, readLen);
+                }
+            }
+        } catch (IOException e) {
+            return null;
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (Exception e) {
+                    // do nothing
+                }
+            }
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (Exception e) {
+                    // do nothing
+                }
+            }
+        }
+        return cascadeFile;
+    }
+
+    private static CascadeClassifier setupFaceDetector() {
+        File cascadeFile = setupCascadeFile();
+        if (cascadeFile == null) {
+            return null;
+        }
+
+        CascadeClassifier detector = new CascadeClassifier(cascadeFile.getAbsolutePath());
+        if (detector.empty()) {
+            return null;
+        }
+        return detector;
     }
 }
