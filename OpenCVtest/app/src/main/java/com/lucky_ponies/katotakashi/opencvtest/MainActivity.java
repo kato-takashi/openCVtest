@@ -23,14 +23,11 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
-import org.opencv.objdetect.Objdetect;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
     static{
@@ -46,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static CascadeClassifier mFaceDetector;
     private static CascadeClassifier mEyeDetector;
     private Size mMinFaceSize;
+    private Size mMinEeySize;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,6 +114,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         if (mMinFaceSize == null) {
             mMinFaceSize = new Size(height / 5, height / 5);
         }
+        if(mMinEeySize == null){
+            mMinEeySize = new Size(height/20, height/20);
+        }
     }
 
     @Override
@@ -131,12 +132,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Mat rgba = inputFrame.rgba();
         if (mFaceDetector != null) {
             MatOfRect faces = new MatOfRect();
-            mFaceDetector.detectMultiScale(inputFrame.gray(), faces, 1.1, 2, 2, mMinFaceSize,
-                    new Size());
+            mFaceDetector.detectMultiScale(inputFrame.gray(), faces, 1.1, 2, 2, mMinFaceSize, new Size());
             Rect[] facesArray = faces.toArray();
             for (int i = 0; i < facesArray.length; i++) {
                 Imgproc.rectangle(rgba, facesArray[i].tl(), facesArray[i].br(), RECT_COLOR, 3);
-//                fncDetectEye(mEyeDetector, rgba, inputFrame.gray(),facesArray[i], faces);
+                fncDetectEye(rgba, inputFrame.gray(), facesArray[i]);
             }
         }
         return rgba;
@@ -224,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         InputStream is = null;
         FileOutputStream os = null;
         try {
+            Log.d("eye", "haarcascade_eye");
             cascadeFile = new File(cascadeDir, "haarcascade_eye.xml");
             if (!cascadeFile.exists()) {
                 is = mContext.getResources().openRawResource(R.raw.lbpcascade_frontalface);
@@ -259,33 +260,38 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static CascadeClassifier setupEyeDetector() {
         File cascadeFile = setupCascadeFileEye();
         if (cascadeFile == null) {
+            Log.d("eye", "setupEyeDetector null");
             return null;
         }
 
         CascadeClassifier detector = new CascadeClassifier(cascadeFile.getAbsolutePath());
         if (detector.empty()) {
+            Log.d("eye", "detector.empty");
             return null;
         }
         return detector;
     }
 
-    //目を描画
-    private void fncDetectEye(CascadeClassifier cascade_eye, Mat mat, Mat gray, Rect Rct, MatOfRect matOfRect){
-//        String cascade_eye_path=Environment.getExternalStorageDirectory()
-//                +"/DCIM/100ANDRO/haarcascade_eye.xml";
-//検索用submat切り出し
+    private void fncDetectEye(Mat mat, Mat gray, Rect Rct){
+        //検索用submat切り出し
         Mat sub = new Mat();
         gray.submat(Rct.y, Rct.y + Rct.height, Rct.x, Rct.x + Rct.width).copyTo(sub);
-//検索結果格納領域
-        List geteyelist = new ArrayList();
-//検索処理
-        cascade_eye.detectMultiScale(sub, matOfRect, 1.1, 3, Objdetect.CASCADE_SCALE_IMAGE, mMinFaceSize, mMinFaceSize);
-//検索結果表示処理
-        for (int i=0; i < geteyelist.size(); i++){
-            Rect rct = (Rect) geteyelist.get(i);
+        //検索結果格納領域
+        MatOfRect eyes = new MatOfRect();
+
+        //検索処理
+        mEyeDetector.detectMultiScale(sub, eyes, 1.1, 2, 2, mMinFaceSize,new Size());
+        Rect[] eyesArray = eyes.toArray();
+
+        Log.d("eye", "fncDetectEye");
+        //検索結果表示処理
+        for (int i=0; i < eyesArray.length; i++){
+            Log.d("eye", "eyesArray "+String.valueOf(eyesArray.length));
+
+            Rect rct = eyesArray[i];
             Point center = new Point(Rct.x + rct.x + rct.width / 2 ,Rct.y + rct.y + rct.height / 2);
             int radius = rct.width / 2;
-//            Core.circle(mat, center, radius, new Scalar(0, 255, 255), 2);
+            Imgproc.circle(mat, center, radius, new Scalar(0, 255, 255), 2);
         }
     }
 }
