@@ -293,7 +293,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         //検索処理
         gray.submat(Rct.y, Rct.y + Rct.height, Rct.x, Rct.x + Rct.width).copyTo(sub);
-        mEyeDetector.detectMultiScale(sub, eyes, 1.1, 2, 2, mMinFaceSize,new Size());
+        mEyeDetector.detectMultiScale(sub, eyes, 1.1, 2, 2, mMinEeySize,new Size());
         Rect[] eyesArray = eyes.toArray();
 
         Log.d("eye", "fncDetectEye");
@@ -304,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             Rect rct = eyesArray[i];
             Point center = new Point(Rct.x + rct.x + rct.width / 2 ,Rct.y + rct.y + rct.height / 2);
             int radius = rct.width / 2;
-            Imgproc.circle(mat, center, radius, new Scalar(0, 255, 255), 2);
+            Imgproc.circle(mat, center, radius, new Scalar(0, 255, 0), 2);
         }
     }
 }
