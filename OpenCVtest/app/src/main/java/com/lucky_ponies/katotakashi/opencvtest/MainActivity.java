@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     private CameraBridgeViewBase mCameraView;
     private static Context mContext;
+    private static Context mContextEye;
     private static CascadeClassifier mFaceDetector;
     private static CascadeClassifier mEyeDetector;
     private Size mMinFaceSize;
@@ -111,6 +112,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStarted(int width, int height) {
+        Log.d("kato", "onCameraViewStarted");
+
         if (mMinFaceSize == null) {
             mMinFaceSize = new Size(height / 5, height / 5);
         }
@@ -121,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStopped() {
-
+        Log.d("kato", "onCameraViewStopped");
     }
 
     @Override
@@ -132,8 +135,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Mat rgba = inputFrame.rgba();
         if (mFaceDetector != null) {
             MatOfRect faces = new MatOfRect();
+            MatOfRect eyes = new MatOfRect();
+
             mFaceDetector.detectMultiScale(inputFrame.gray(), faces, 1.1, 2, 2, mMinFaceSize, new Size());
             Rect[] facesArray = faces.toArray();
+
             for (int i = 0; i < facesArray.length; i++) {
                 Imgproc.rectangle(rgba, facesArray[i].tl(), facesArray[i].br(), RECT_COLOR, 3);
                 fncDetectEye(rgba, inputFrame.gray(), facesArray[i]);
@@ -148,12 +154,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             super(context);
             mCameraView = cameraView;
             mContext = context;
-
+            mContextEye = context;
+            Log.d("kato", "OpenCVLoaderCallback");
 
         }
 
         @Override
         public void onManagerConnected(int status) {
+            Log.d("kato", "onManagerConnected");
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS:
                     mCameraView.enableView();
@@ -168,6 +176,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     //カスケードファイルの作成
     private static File setupCascadeFile() {
+        Log.d("kato", "setupCascadeFile");
+
         File cascadeDir = mContext.getDir("cascade", Context.MODE_PRIVATE);
         File cascadeFile = null;
         InputStream is = null;
@@ -205,6 +215,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     private static CascadeClassifier setupFaceDetector() {
+        Log.d("kato", "setupFaceDetector");
+
+
         File cascadeFile = setupCascadeFile();
         if (cascadeFile == null) {
             return null;
@@ -219,16 +232,16 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     //////////////
     private static File setupCascadeFileEye() {
-        File cascadeDir = mContext.getDir("cascade", Context.MODE_PRIVATE);
-        File cascadeFile = null;
+        File cascadeDirEye = mContextEye.getDir("cascade", Context.MODE_PRIVATE);
+        File cascadeFileEye = null;
         InputStream is = null;
         FileOutputStream os = null;
         try {
             Log.d("eye", "haarcascade_eye");
-            cascadeFile = new File(cascadeDir, "haarcascade_eye.xml");
-            if (!cascadeFile.exists()) {
-                is = mContext.getResources().openRawResource(R.raw.lbpcascade_frontalface);
-                os = new FileOutputStream(cascadeFile);
+            cascadeFileEye = new File(cascadeDirEye, "haarcascade_eye.xml");
+            if (!cascadeFileEye.exists()) {
+                is = mContextEye.getResources().openRawResource(R.raw.haarcascade_eye);
+                os = new FileOutputStream(cascadeFileEye);
                 byte[] buffer = new byte[4096];
                 int readLen = 0;
                 while ((readLen = is.read(buffer)) != -1) {
@@ -253,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 }
             }
         }
-        return cascadeFile;
+        return cascadeFileEye;
     }
 
 
@@ -275,11 +288,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private void fncDetectEye(Mat mat, Mat gray, Rect Rct){
         //検索用submat切り出し
         Mat sub = new Mat();
-        gray.submat(Rct.y, Rct.y + Rct.height, Rct.x, Rct.x + Rct.width).copyTo(sub);
         //検索結果格納領域
         MatOfRect eyes = new MatOfRect();
 
         //検索処理
+        gray.submat(Rct.y, Rct.y + Rct.height, Rct.x, Rct.x + Rct.width).copyTo(sub);
         mEyeDetector.detectMultiScale(sub, eyes, 1.1, 2, 2, mMinFaceSize,new Size());
         Rect[] eyesArray = eyes.toArray();
 
